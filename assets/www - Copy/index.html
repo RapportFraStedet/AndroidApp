@@ -1,0 +1,461 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Rapport Fra Stedet</title>
+    <link rel="stylesheet" href="./content/jquery.mobile-1.2.0-alpha.1.min.css" />
+    <!-- <link rel="stylesheet" href="./content/jquery.mobile-1.1.0.min.css" /> -->
+    <link rel="stylesheet" href="./content/jquery.mobile.datebox.min.css" />
+    <link rel="stylesheet" href="./content/style.mobile-jq.css" type="text/css" />
+    <link rel="stylesheet" href="./content/theme/default/google.css" type="text/css">
+    <link rel="stylesheet" href="./content/theme/default/style.mobile.css" type="text/css">
+    <script type="text/javascript" src="./scripts/cordova-2.0.0.js"></script>
+    <script type="text/javascript" src="./scripts/jquery-1.7.1.min.js"></script>
+    <script type="text/javascript" src="./scripts/init.js"></script>
+    <!--script type="text/javascript" src="./scripts/jquery.mobile-1.1.0.min.js"></script-->
+    <script type="text/javascript" src="./scripts/jquery.mobile-1.2.0-alpha.1.min.js"></script>
+    <script type="text/javascript" src="./scripts/jquery.mobile.datebox.min.js"></script>
+    <script type="text/javascript" src="./scripts/proj4js-compressed.js"></script>
+    <script type="text/javascript" src="./scripts/defs/EPSG4326.js"></script>
+    <script type="text/javascript" src="./scripts/defs/EPSG25832.js"></script>
+    <script type="text/javascript" src="./scripts/jquery.validate.min.js"></script>
+    <script type="text/javascript" src="./scripts/OpenLayers.js"></script>
+    <script type="text/javascript" src="./scripts/mobile-base.js"></script>
+    <script type="text/javascript" src="./scripts/mobile-jq.js"></script>
+    <script type="text/javascript" src="./scripts/rapport-fra-stedet.js"></script>
+    <script type="text/javascript" src="./scripts/oiorest.js"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+
+    <style type="text/css">
+        label.error
+        {
+            /*color: #e80c4d*/
+            color: #f1433f;
+        }
+        em
+        {
+            font-weight: bold;
+            padding-right: 0.5em;
+            vertical-align: top;
+            color: #387bbe;
+        }
+    </style>
+    <script type="text/javascript">
+        var version = "Rapport Fra Stedet 1.0.0";
+        //var url = "http://rtv04/RapportFraStedet/api/kommune";
+        var url = "http://code.addin.dk/RapportFraStedet/api/kommune";
+        
+        document.addEventListener("deviceready", onDeviceReady, false);
+        var watchID = null;
+        // Cordova is ready
+        //
+        function onDeviceReady() {
+            // Update every 3 seconds
+            var options = { 
+                frequency: 3000,
+                enableHighAccuracy: true
+            };
+            watchID = navigator.geolocation.watchPosition(onGeolocationSuccess, onGeolocationError, options);
+        }
+        // onSuccess Geolocation
+        //
+        function onGeolocationSuccess(position) {
+            var element = document.getElementById('geolocation');
+            element.innerHTML = 'Latitude: ' + position.coords.latitude + '<br />' +
+                            'Longitude: ' + position.coords.longitude + '<br />' +
+                            '<hr />' + element.innerHTML;
+        }
+
+        // onError Callback receives a PositionError object
+        //
+        function onGeolocationError(error) {
+            navigator.notification.alert('code: ' + error.code + '\n' + 'message: ' + error.message + '\n');
+        }
+        
+        function onSuccess(imageURL) {
+			var image = document.getElementById(imageId);
+			image.src = imageURL;
+		}
+        
+
+        // Called if something bad happens.
+        // 
+        function onFail(message) {
+            var msg = 'An error occurred during capture: ' + message;
+            navigator.notification.alert(msg, null, 'Uh oh!');
+        }
+        
+        // A button will call this function
+        //
+        var imageId;
+        function captureImage(id) {
+            // Launch device camera application, 
+            // allowing user to capture up to 2 images
+            imageId = id;
+            //navigator.device.capture.captureImage(captureSuccess, captureError, { limit: 1 });
+			navigator.camera.getPicture(onSuccess, onFail, { 
+				quality: 100, 
+				destinationType: Camera.DestinationType.FILE_URI 
+			});
+        }
+        $(document).ready(function (event) {
+            Rfs.init();
+            $.support.cors = true;
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        x = position.coords.longitude;
+                        y = position.coords.latitude;
+                        var source = new Proj4js.Proj('EPSG:4326');    //source coordinates will be in Longitude/Latitude
+                        var dest = new Proj4js.Proj('EPSG:25832');     //destination coordinates in LCC, south of France
+                        // transforming point coordinates
+                        var p = new Proj4js.Point(x, y);   //any object will do as long as it has 'x' and 'y' properties
+                        Proj4js.transform(source, dest, p);
+                        x = p.x;
+                        y = p.y;
+                        Rfs.showPosition();
+                    },
+                    function (error) {
+                        $.mobile.changePage("#AlleKommuner");
+                    }
+                );
+            }
+            else {
+                $.mobile.changePage("#AlleKommuner", { transition: "slide" });
+            }
+        });
+        /*$(document).bind("pagechange", function (toPage, options) {
+            if (toPage) {
+                //$("#FormularInfo").popup("open");
+            }
+        });*/
+        $(document).bind("pagebeforechange", function (e, data) {
+            if (typeof data.toPage === "string") {
+                var u = $.mobile.path.parseUrl(data.toPage);
+                if (u.hash.search(/^#Kommune/) !== -1) {
+                    e.preventDefault();
+                    Rfs.showKommune(u, data.options);
+                }
+                else if (u.hash.search(/^#AlleKommuner/) !== -1) {
+                    e.preventDefault();
+                    Rfs.showAlleKommuner(u, data.options);
+                }
+                else if (u.hash.search(/^#Tema/) !== -1) {
+                    e.preventDefault();
+                    Rfs.showTema(u, data.options);
+                }
+                else if (u.hash.search(/^#Advarsel/) !== -1) {
+                    e.preventDefault();
+                    Rfs.showAdvarsel(u, data.options);
+                }
+                /*else if (u.hash.search(/^#OioKommune/) !== -1) {
+                    oiorest.getKommuner(data.options);
+                    //e.preventDefault();
+                }*/
+                /*else if (u.hash.search(/^#OioVej/) !== -1) {
+                    oiorest.getVeje(u, data.options);
+                    //e.preventDefault();
+                }*/
+                else if (u.hash.search(/^#OioAdresse/) !== -1) {
+                    oiorest.getAdresser(u, data.options);
+                    //e.preventDefault();
+                }
+                else if (u.hash.search(/^#OioPosition/) !== -1) {
+                    oiorest.getPosition(u, data.options);
+                    //e.preventDefault();
+                }
+                else if (u.hash.search(/^#Kvittering/) !== -1) {
+                    e.preventDefault();
+                    Rfs.submitForm(u, data.options);
+                    
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="Start" data-role="page" data-theme="a">
+        <div data-role="content">
+            <h2>Rapport Fra Stedet</h2>
+            <img src="./content/splash.png" width="100%"/>
+            <p>Version 1.3 Loading...</p>
+        </div>
+    </div>
+    <div id="ModtagerIkkeIndberetning" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Advarsel</h1>
+        </div>
+        <div data-role="content">
+        </div>
+    </div>
+    <div id="Advarsel" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Advarsel</h1>
+        </div>
+        <div data-role="content">
+            <div id="update"></div>
+        </div>
+    </div>
+    <div id="Warning" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Advarsel</h1>
+        </div>
+        <div data-role="content">
+            <p>
+                Det er ikke tilladt at indberette fra din pågældende position.</p>
+            <p>
+                Ved denne indbretning skal du placere din position manuelt i kortet.</p>
+            <a href="#" data-rel="back" data-role="button" data-theme="b">Tilbage</a>
+        </div>
+    </div>
+    <div id="ShowKommunerError" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Fejl</h1>
+        </div>
+        <div data-role="content">
+            <p>
+                Der er sket en fejl ved hentning af alle kommuner fra serveren.</p>
+            <p>
+                Vil du forsøge at hente kommunerne igen?</p>
+            <a href="#AlleKommuner" data-role="button" data-theme="b">Prøv igen</a>
+        </div>
+    </div>
+    <div id="AlleKommuner" data-role="page" data-theme="a">
+        <div data-role="content">
+            <ul data-role="listview" data-filter="true" data-filter-theme="b" data-filter-placeholder="Søg kommune...">
+            </ul>
+        </div>
+    </div>
+    <div id="Div1" data-role="page" data-theme="a">
+        <div data-role="header">
+            <img style="position: relative; float: left; width: 40px; height: 40px; visibility: hidden" />
+            <h1>test
+            </h1>
+        </div>
+        <div data-role="content">
+            <ul data-role='listview'>
+                <li data-icon='alert'><a href='#Tema?id=5' data-transition='slide'><img src='http://code.addin.dk/rapportfrastedet/images/affald.jpg' /><h1>Affald</h1><p>Indberet affald der skal fjernes</p><a href='#Warning' data-theme='e' data-rel='dialog' data-transition='slide'></a></a></li><li data-icon='alert'><a href='#Tema?id=1' data-transition='slide'><img src='http://code.addin.dk/rapportfrastedet/images/graffiti.jpg' /><h1>Graffiti</h1><p>Indberet områder hvor der er graffiti.</p><a href='#Warning' data-theme='e' data-rel='dialog' data-transition='slide'></a></a></li><li data-icon='alert'><a href='#Tema?id=3' data-transition='slide'><img src='http://code.addin.dk/rapportfrastedet/images/gravko.jpg' /><h1>Graveplan</h1><p>Planlæg nye gravearbejder</p><a href='#Warning' data-theme='e' data-rel='dialog' data-transition='slide'></a></a></li><li data-icon='alert'><a href='#Tema?id=4' data-transition='slide'><img src='http://code.addin.dk/rapportfrastedet/images/huller.jpg' /><h1>Hul i vejen</h1><p>Indberet huller i vejen</p><a href='#Warning' data-theme='e' data-rel='dialog' data-transition='slide'></a></a></li><li data-icon='alert'><a href='#Tema?id=2' data-transition='slide'><img src='http://code.addin.dk/rapportfrastedet/images/bjoerneklo.jpg' /><h1>Invasive arter</h1><p>Indberet områder med Invasive arter.</p><a href='#Warning' data-theme='e' data-rel='dialog' data-transition='slide'></a></a></li>
+            </ul>
+        </div>
+        <div data-role="footer" data-position="fixed" data-theme="b">
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#AlleKommuner" data-transition="slide">Vælg en anden kommune</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div id="Kommune" data-role="page" data-theme="a">
+        <div data-role="header">
+            <img style="position: relative; float: left; width: 40px; height: 40px; visibility: hidden" />
+            <h1></h1>
+            
+        </div>
+        <div data-role="content">
+            <ul data-role='listview'>
+            </ul>
+
+        </div>
+        <div data-role="footer" data-position="fixed" data-theme="b">
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#AlleKommuner" data-transition="slide" data-direction="reverse">Vælg en anden kommune</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div id="Formular" data-role="page" data-theme="a">
+        <div data-role="header">
+            <img style="position: relative; float: left; width: 40px; height: 40px; visibility: hidden" />
+            <h1>
+            </h1>
+        </div>
+        <div data-role="content">
+            <form id="rapportForm">
+            </form>
+            <div style="height: 25px">
+            </div>
+        </div>
+        <div data-role="footer" data-position="fixed">
+            <div id="formnavbar" class="ui-grid-c">
+                <a href="#Kort" class="ui-block-a" data-icon="back" data-role="button" data-corners="false" data-iconpos="top" data-transition="slide" data-direction="reverse">Tilbage</a>
+                <div class="ui-block-b" style="text-align:right;">
+			        <a href="#Kommune" data-role="button" data-mini="true" data-inline="true" data-theme="a" style="margin:10px 0px 0px 0px" data-transition="slide" data-direction="reverse">1</a>
+			        <a href="#Kort" data-role="button" data-mini="true" data-inline="true" data-theme="a" style="margin:10px 2px 0px 0px" data-transition="slide" data-direction="reverse">2</a>
+                </div>
+                <div class="ui-block-c" style="text-align:left;">
+			        <a href="#" data-role="button" data-mini="true" data-inline="true" data-theme="b" style="margin:10px 0px 0px 2px">3</a>
+                    <a href="#" data-role="button" data-mini="true" data-inline="true" data-theme="a" style="margin:10px 0px 0px 0px">4</a>
+                </div>
+                <a href="#Confirm" data-theme="b" data-icon="forward" class="ui-block-d" data-role="button" data-corners="false" data-iconpos="top" data-rel="popup" data-position-to="window" data-transition="pop">Næste</a>
+            </div>
+        </div>
+        <div data-role="popup" id="Confirm" data-overlay-theme="a" data-theme="c" style="max-width:400px;" class="ui-corner-all">
+			<div data-role="header" data-theme="a" class="ui-corner-top">
+				<h1>Send?</h1>
+			</div>
+			<div data-role="content" data-theme="d" class="ui-corner-bottom ui-content">
+				<h3 class="ui-title">Vil du sende din indberetning?</h3>
+				<p>Klik på OK hvis du er klar til at sende din indberetning.</p>
+				<a href="#" data-role="button" data-rel="back" data-theme="c">Annuler</a>    
+				<a href="#Kvittering" data-role="button" data-transition="slide" data-theme="b">OK</a>  
+			</div>
+		</div>
+    </div>
+    <div id="Kvittering" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Kvittering</h1>
+        </div>
+        <div data-role="content">
+            <h3>
+                Tak for din indberetning</h3>
+            <p>
+                Vil du foretage en ny indberetning?</p>
+            <a href="#Kommune" data-role="button" data-theme="b">Ny indberetning</a>
+        </div>
+    </div>
+    <div id="KvitteringError" data-role="dialog">
+        <div data-role="header">
+            <h1>
+                Fejl</h1>
+        </div>
+        <div data-role="content">
+            <p>
+                Der er sket en fejl. Din indberetning er IKKE modtaget!</p>
+            <p>
+                Vil du forsøge igen?</p>
+            <a href="#Formular" data-role="button" data-theme="b">Prøv igen</a>
+        </div>
+    </div>
+    <div id="Kort" data-role="page">
+        <div data-role="header"  data-theme="a">
+            <div data-role="navbar">
+                <ul>
+                    <li><a href="#SearchPage1" data-icon="search">Søg</a></li>
+                    <li><a id="locate" href="#" data-icon="locate">Position</a></li>
+                    <li><a href="#Tegn" data-icon="star" data-rel="popup" data-position-to="window">Tegn</a></li>
+                    <li><a href="#layerspage" data-icon="layers" data-rel="popup" data-position-to="window">Kort</a></li>
+                </ul>
+            </div>
+        </div>
+        <div data-role="content">
+            <div id="map">
+            </div>
+        </div>
+        <div data-role="footer">
+            <div id="kortnavbar" class="ui-grid-c">
+                <a href="#Kommune" class="ui-block-a" data-icon="back" data-role="button" data-corners="false" data-iconpos="top" data-transition="slide" data-direction="reverse">Tilbage</a>
+                <div class="ui-block-b" style="text-align:right;">
+			        <a href="#Kommune" data-role="button" data-mini="true" data-inline="true" data-theme="a" style="margin:10px 0px 0px 0px" data-transition="slide" data-direction="reverse">1</a>
+			        <a href="#" data-role="button" data-mini="true" data-inline="true" data-theme="b" style="margin:10px 2px 0px 0px">2</a>
+                </div>
+                <div class="ui-block-c" style="text-align:left;">
+			        <a href="#" data-role="button" data-mini="true" data-inline="true" data-theme="a" style="margin:10px 0px 0px 2px">3</a>
+                    <a href="#" data-role="button" data-mini="true" data-inline="true" data-theme="a"  style="margin:10px 0px 0px 0px">4</a>
+                </div>
+                <a href='#Formular' data-theme="b" data-icon="forward" class="ui-block-d" data-role="button" data-corners="false" data-iconpos="top" data-transition="slide">Næste</a>
+                <!--a href='#FormularInfo' data-theme="b" data-icon="forward" class="ui-block-d" data-role="button" data-corners="false" data-iconpos="top" data-rel="popup" data-position-to="window">Næste</a-->
+            </div>
+        </div>
+        <div id="navigation" data-role="controlgroup" data-type="vertical">
+            <a href="#" data-role="button" data-icon="plus" id="plus" data-iconpos="notext" ></a>
+            <a href="#" data-role="button" data-icon="minus" id="minus" data-iconpos="notext" ></a>
+        </div>
+        <div data-role="popup" id="layerspage">
+			<ul id="layerslist" data-role="listview" data-inset="true" style="min-width:210px;">
+			</ul>
+		</div>
+        <!--div data-role="popup" id="FormularInfo" class="ui-content" data-theme="e" style="max-width:350px;">
+          <p>Tilknyt en geografisk position til din indberetning ved at zoome og panorere kortet så den ønskede position er i midten af det røde stregkors.</p>
+		</div-->
+        <div id="Tegn" data-role="popup">
+            <ul data-role="listview" data-inset="true" style="min-width:210px;">
+                <li data-role='divider' data-theme='a'>Tegneværktøjer</li>
+                <li id="tegnPunkt" data-icon="check"><a href="#" data-rel="back" onclick="Point()">Punkt</a></li>
+                <li id="tegnLinie" data-icon="check"><a href="#" data-rel="back" onclick="Path()">Linie</a></li>
+                <li id="tegnPolygon" data-icon="check"><a href="#" data-rel="back" onclick="Polygon()">Polygon</a></li>
+                <li id="tegnRediger" data-icon="check"><a href="#" data-rel="back" onclick="Modify()">Rediger</a></li>
+                <li id="tegnSlet" data-icon="check"><a href="#" data-rel="back" onclick="Remove()">Slet</a></li>
+                <li id="tegnNaviger" data-icon="check" class="checked"><a href="#" data-rel="back" onclick="Navigate()">Naviger</a></li>
+            </ul>
+        </div>
+    </div>
+    <div id="popup" data-role="dialog">
+        <div data-position="inline" data-theme="d" data-role="header">
+            <h1>
+                Details</h1>
+        </div>
+        <div data-theme="c" data-role="content">
+            <ul id="details-list" data-role="listview">
+            </ul>
+        </div>
+    </div>
+    <div id="SearchPage1" data-role="page">
+        <div data-role="header">
+            <h1>Søgning</h1>
+        </div>
+        <div data-role="content">
+            <div id="searchOptionsCollapsible" data-role="collapsible" data-collapsed="false" data-theme="b" data-content-theme="c">
+                <h1>Søgemuligheder</h1>
+                <fieldset id="searchOptions" data-role="controlgroup">
+                    <legend>Aktiver ønskede søgemuligheder</legend>
+                </fieldset>
+        	</div>
+            <input placeholder="Søg..." type="search" name="search1" id="search1" value="" />
+            <div id="searchResult1"></div>
+        </div>
+    </div>
+    <div id="SearchPage2" data-role="page">
+        <div data-role="header">
+            <h1></h1>
+        </div>
+        <div data-role="content">
+             <!--form class="ui-listview-filter ui-bar-c" role="search">
+                <input placeholder="Søg vej..." type="search" name="searchVej" id="searchVej" value="" />
+            </form-->
+            <p id="searchHint2"></p>
+            <input placeholder="Søg..." type="search" name="searchInput2" id="searchInput2" value="" />
+            <ul id="searchResult2" data-role="listview" data-inset="true">
+            </ul>
+        </div>
+    </div>
+    <div id="SearchPage3" data-role="page">
+        <div data-role="header">
+            <h1></h1>
+        </div>
+        <div data-role="content">
+             <!--form class="ui-listview-filter ui-bar-c" role="search">
+                <input placeholder="Søg husnr..." type="search" name="searchAdresse" id="searchAdresse" value="" />
+            </form-->
+            <p id="searchHint3"></p>
+            <input placeholder="Søg..." type="search" name="searchInput3" id="searchInput3" value="" />
+            <ul id="searchResult3" data-role="listview" data-inset="true">
+            </ul>
+        </div>
+    </div>
+    <!--div id="OioKommune" data-role="page">
+        <div data-role="content">
+            <ul id="listKommune" data-role="listview" data-filter="true" data-filter-placeholder="Søg kommune...">
+            </ul>
+        </div>
+    </div>
+    <div id="OioVej" data-role="page">
+        <div data-role="content">
+            <ul id="listVej" data-role="listview" data-filter="true" data-filter-placeholder="Søg vej...">
+            </ul>
+        </div>
+    </div>
+    <div id="OioAdresse" data-role="page">
+        <div data-role="content">
+            <ul id="listAdresse" data-role="listview" data-filter="true" data-filter-placeholder="Søg husnr...">
+            </ul>
+        </div>
+    </div-->
+</body>
+</html>
