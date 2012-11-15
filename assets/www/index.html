@@ -17,14 +17,14 @@
 		<link rel=stylesheet href="css/jquery.mobile-1.2.0.min.css" />
 		<link rel=stylesheet href='css/1bc860c.css'>
         <script src="js/vendor/modernizr.custom.40852.js"></script>
-        <script src="js/vendor/cordova-2.1.0.js"></script>
+        <script src="js/vendor/cordova-2.2.0.js"></script>
 		<script src="js/vendor/jquery-1.8.2.min.js"></script>
 		<script src="js/vendor/jquery.mobile-1.2.0.min.js"></script>
 		<script src="js/vendor/jquery.validate.min.js"></script>
 		<script src="js/vendor/messages_da.js"></script>
 		<script src="js/vendor/proj4js.js"></script>
 		<script src="js/vendor/OpenLayers.js"></script>
-        <script src='js/f044565.js'></script>
+        <script src="js/32050cb.js"></script>
         
         <script>
             var _gaq=[['_setAccount','UA-24623853-2'],['_trackPageview']];
@@ -46,7 +46,7 @@
             <p>Det kan være et hul i vejen som skal laves, eller en bjørneklo som skal fjernes.</p>
             <p>Rapporter her, så hjælper du med til at holde kommunen kørende.</p>
             <a onclick="geoLocate()" data-role=button data-theme=b>Start</a>
-            <cite>Version 1.6</cite> 
+            <cite>Version 1.7</cite> 
         </div>
     </div>
     <div id=ModtagerIkkeIndberetning data-role=dialog>
@@ -241,6 +241,10 @@
 			<a href="#" data-rel=back data-role=button data-theme=a data-icon=delete data-iconpos=notext class=ui-btn-right>Luk</a>
 			<p>Det er ikke tilladt at indberette på valgte placering.</p>
             <p>Ret placeringen og prøv igen.</p>
+		</div>
+		<div data-role=popup id=LocationError class=ui-content data-theme=e style="max-width:350px;" data-history=false>
+			<a href="#" data-rel=back data-role=button data-theme=a data-icon=delete data-iconpos=notext class=ui-btn-right>Luk</a>
+			<div id=LocationErrorMessage></div>
 		</div>
         <div data-role=popup id=Div2 data-overlay-theme=a data-theme=c style="max-width:400px;" class=ui-corner-all data-history=false>
 			<div data-role=header data-theme=a class=ui-corner-top>
