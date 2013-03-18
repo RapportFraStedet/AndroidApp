@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿
+<!DOCTYPE html>
 <!--[if lt IE 7]><html class="no-js lt-ie9 lt-ie8 lt-ie7"><![endif]-->
 <!--[if IE 7]><html class="no-js lt-ie9 lt-ie8"><![endif]-->
 <!--[if IE 8]><html class="no-js lt-ie9"><![endif]-->
@@ -14,17 +15,18 @@
         
 
         <link rel=stylesheet href="css/normalize.css">
-		<link rel=stylesheet href="css/jquery.mobile-1.2.0.min.css" />
+		<link rel=stylesheet href="css/jquery.mobile-1.2.0.min.css"/>
 		<link rel=stylesheet href='css/1bc860c.css'>
+        <script src="js/vendor/cordova-2.5.0.js"></script>
         <script src="js/vendor/modernizr.custom.40852.js"></script>
-        <script src="js/vendor/cordova-2.2.0.js"></script>
-		<script src="js/vendor/jquery-1.8.2.min.js"></script>
+        <script src="js/vendor/jquery-1.8.2.min.js"></script>
 		<script src="js/vendor/jquery.mobile-1.2.0.min.js"></script>
 		<script src="js/vendor/jquery.validate.min.js"></script>
 		<script src="js/vendor/messages_da.js"></script>
 		<script src="js/vendor/proj4js.js"></script>
 		<script src="js/vendor/OpenLayers.js"></script>
-        <script src="js/32050cb.js"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?v=3.exp&sensor=false"></script>
+        <script src='js/d22d695.js'></script>
         
         <script>
             var _gaq=[['_setAccount','UA-24623853-2'],['_trackPageview']];
@@ -46,7 +48,10 @@
             <p>Det kan være et hul i vejen som skal laves, eller en bjørneklo som skal fjernes.</p>
             <p>Rapporter her, så hjælper du med til at holde kommunen kørende.</p>
             <a onclick="geoLocate()" data-role=button data-theme=b>Start</a>
-            <cite>Version 1.7</cite> 
+            
+            <cite>Version 1.9</cite> 
+			<!--[if lt IE 9]><p>Du bruger en forældet browser. <a href="http://browsehappy.com/">Upgrader din browser</a> eller <a href="http://www.google.com/chromeframe/?redirect=true">installer Google Chrome Frame</a> for en bedre oplevelse af dette site.</p><![endif]-->
+			<div id=app></div>
         </div>
     </div>
     <div id=ModtagerIkkeIndberetning data-role=dialog>
@@ -209,7 +214,7 @@
         <div id=map>
         </div>
         <div id=kortnavbar class="ui-grid-c ui-bar-a">
-            <a href="#Kommune" class=ui-block-a data-mini=true data-icon=back data-role=button data-corners=false data-iconpos=top data-transition=slide data-direction=reverse>Tilbage</a>
+            <a id=backKommune href="#Kommune" class=ui-block-a data-mini=true data-icon=back data-role=button data-corners=false data-iconpos=top data-transition=slide data-direction=reverse>Tilbage</a>
             <div class=ui-block-b style="text-align:right;" data-theme=a>
 		        <a href="#Kommune" data-role=button data-mini=true data-inline=true data-theme=a style="margin:10px 0px 0px 0px" data-transition=slide data-direction=reverse>1</a>
 		        <a href="#" data-role=button data-mini=true data-inline=true data-theme=b style="margin:10px 2px 0px 0px">2</a>
